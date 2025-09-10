@@ -1,5 +1,9 @@
 // Global app configuration
-const API_BASE_URL = window.location.hostname === 'localhost' ? 'http://localhost:3000' : 'https://your-backend-url.onrender.com';
+const API_BASE_URL =
+  window.location.hostname === 'localhost'
+    ? 'http://localhost:3000'
+    : 'https://ntrcaprelims.onrender.com';
+
 
 // Utility functions
 function showLoading() {
