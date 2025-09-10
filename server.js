@@ -320,47 +320,51 @@ app.get('/exams/:id/leaderboard', async (req, res) => {
 // POST /admin/import
 app.post('/admin/import', requireAdmin, async (req, res) => {
   const client = await pool.connect();
-  
+
   try {
+    const { title, description, startTime, endTime, marksPerQuestion, questions } = req.body;
+
+    // Basic validation
+    if (!title || !startTime || !endTime || !Array.isArray(questions) || questions.length === 0) {
+      return res.status(400).json({ error: 'Invalid exam JSON' });
+    }
+
     await client.query('BEGIN');
-    
-    const examData = req.body;
-    
+
     // Insert exam
-    const examResult = await client.query(`
-      INSERT INTO exams (title, description, start_time, end_time, marks_per_question)
-      VALUES ($1, $2, $3, $4, $5)
-      RETURNING id
-    `, [
-      examData.title,
-      examData.description,
-      examData.startTime,
-      examData.endTime,
-      examData.marksPerQuestion || 1
-    ]);
+    const examResult = await client.query(
+      `INSERT INTO exams (title, description, start_time, end_time, marks_per_question)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING id`,
+      [title, description || '', startTime, endTime, marksPerQuestion || 1]
+    );
 
     const examId = examResult.rows[0].id;
 
     // Insert questions
-    for (const question of examData.questions) {
-      await client.query(`
-        INSERT INTO questions (exam_id, question, options, correct_answer, explanation)
-        VALUES ($1, $2, $3, $4, $5)
-      `, [
-        examId,
-        question.question,
-        JSON.stringify(question.options),
-        question.correctAnswer,
-        question.explanation
-      ]);
+    for (let i = 0; i < questions.length; i++) {
+      const q = questions[i];
+      await client.query(
+        `INSERT INTO questions (exam_id, question, options, correct_answer, explanation, order_index)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [
+          examId,
+          q.question,
+          q.options,          // direct array insert into TEXT[]
+          q.correctAnswer,    // zero-based index
+          q.explanation || '',
+          i                   // preserve order
+        ]
+      );
     }
 
     await client.query('COMMIT');
-    
-    res.json({ 
+
+    res.json({
       message: 'Exam imported successfully',
-      examId: examId
+      examId
     });
+
   } catch (error) {
     await client.query('ROLLBACK');
     console.error('Import exam error:', error);
@@ -369,6 +373,7 @@ app.post('/admin/import', requireAdmin, async (req, res) => {
     client.release();
   }
 });
+
 
 // GET /admin/metrics
 app.get('/admin/metrics', requireAdmin, async (req, res) => {
