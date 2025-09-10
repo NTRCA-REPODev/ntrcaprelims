@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - Online Exam Portal</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1 class="logo">⚙️ Admin Panel</h1>
+            <a href="index.html" class="btn btn-outline">Back to Home</a>
+        </header>
+
+        <!-- Admin Login -->
+        <div id="adminLogin" class="card">
+            <h2>Admin Access</h2>
+            <form id="adminLoginForm" class="form">
+                <div class="form-group">
+                    <label for="adminPassword">Admin Password</label>
+                    <input type="password" id="adminPassword" name="password" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Login</button>
+            </form>
+        </div>
+
+        <!-- Admin Dashboard -->
+        <div id="adminDashboard" style="display: none;">
+            <div class="admin-metrics card">
+                <h3>System Metrics</h3>
+                <div class="metrics-grid" id="metricsGrid">
+                    <!-- Metrics will be loaded here -->
+                </div>
+            </div>
+
+            <div class="admin-import card">
+                <h3>Import Exam</h3>
+                <div class="import-section">
+                    <div class="form-group">
+                        <label for="examJson">Exam JSON Data</label>
+                        <textarea id="examJson" rows="10" placeholder="Paste your exam JSON here..."></textarea>
+                    </div>
+                    <button onclick="importExam()" class="btn btn-primary">Import Exam</button>
+                </div>
+                
+                <div class="json-example">
+                    <h4>Example JSON Format:</h4>
+                    <pre id="jsonExample">{
+  "title": "Sample Exam",
+  "description": "This is a sample exam",
+  "startTime": "2024-01-15T10:00:00.000Z",
+  "endTime": "2024-01-15T12:00:00.000Z",
+  "marksPerQuestion": 1,
+  "questions": [
+    {
+      "question": "What is 2 + 2?",
+      "options": ["3", "4", "5", "6"],
+      "correctAnswer": 1,
+      "explanation": "2 + 2 equals 4"
+    }
+  ]
+}</pre>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="loading" class="loading" style="display: none;">
+        <div class="spinner"></div>
+    </div>
+
+    <script src="app.js"></script>
+    <script>
+        const ADMIN_PASSWORD = "FahimsirNTRCA";
+        let isAdminLoggedIn = false;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check if already logged in as admin
+            if (localStorage.getItem('adminLoggedIn') === 'true') {
+                showAdminDashboard();
+            }
+        });
+
+        // Admin login form handler
+        document.getElementById('adminLoginForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const password = document.getElementById('adminPassword').value;
+            
+            if (password === ADMIN_PASSWORD) {
+                localStorage.setItem('adminLoggedIn', 'true');
+                showAdminDashboard();
+                showAlert('Admin login successful!', 'success');
+            } else {
+                showAlert('Invalid admin password', 'error');
+                document.getElementById('adminPassword').value = '';
+            }
+        });
+
+        function showAdminDashboard() {
+            isAdminLoggedIn = true;
+            document.getElementById('adminLogin').style.display = 'none';
+            document.getElementById('adminDashboard').style.display = 'block';
+            loadMetrics();
+        }
+
+        async function loadMetrics() {
+            try {
+                showLoading();
+                const metrics = await apiCall('/admin/metrics', 'GET', null, `Bearer admin_secret_token`);
+                hideLoading();
+                displayMetrics(metrics);
+            } catch (error) {
+                hideLoading();
+                showAlert(error.message || 'Failed to load metrics', 'error');
+            }
+        }
+
+        function displayMetrics(metrics) {
+            document.getElementById('metricsGrid').innerHTML = `
+                <div class="metric-item">
+                    <div class="metric-value">${metrics.totalUsers}</div>
+                    <div class="metric-label">Total Users</div>
+                </div>
+                <div class="metric-item">
+                    <div class="metric-value">${metrics.liveTakers}</div>
+                    <div class="metric-label">Live Exam Takers</div>
+                </div>
+            `;
+        }
+
+        async function importExam() {
+            try {
+                const jsonData = document.getElementById('examJson').value;
+                
+                if (!jsonData.trim()) {
+                    showAlert('Please enter exam JSON data', 'error');
+                    return;
+                }
+
+                const examData = JSON.parse(jsonData);
+                
+                // Validate required fields
+                if (!examData.title || !examData.startTime || !examData.endTime || !examData.questions) {
+                    showAlert('Invalid exam format. Please check required fields.', 'error');
+                    return;
+                }
+
+                showLoading();
+                const result = await apiCall('/admin/import', 'POST', examData, `Bearer admin_secret_token`);
+                hideLoading();
+                
+                showAlert(`Exam imported successfully! Exam ID: ${result.examId}`, 'success');
+                document.getElementById('examJson').value = '';
+                
+            } catch (error) {
+                hideLoading();
+                if (error.name === 'SyntaxError') {
+                    showAlert('Invalid JSON format', 'error');
+                } else {
+                    showAlert(error.message || 'Failed to import exam', 'error');
+                }
+            }
+        }
+
+        // Logout admin on page unload
+        window.addEventListener('beforeunload', function() {
+            if (isAdminLoggedIn) {
+                localStorage.removeItem('adminLoggedIn');
+            }
+        });
+    </script>
+</body>
+</html>

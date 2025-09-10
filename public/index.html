@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Online Exam Portal</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1 class="logo">📚 Exam Portal</h1>
+            <div class="user-info" id="userInfo" style="display: none;">
+                <span id="userName"></span>
+                <button onclick="logout()" class="btn btn-outline">Logout</button>
+            </div>
+        </header>
+
+        <!-- Registration Form -->
+        <div id="registrationSection" class="card">
+            <h2>Register for Exams</h2>
+            <form id="registrationForm" class="form">
+                <div class="form-group">
+                    <label for="name">Full Name</label>
+                    <input type="text" id="name" name="name" required>
+                </div>
+                <div class="form-group">
+                    <label for="district">District</label>
+                    <select id="district" name="district" required>
+                        <option value="">Select District</option>
+                        <option value="Dhaka">Dhaka</option>
+                        <option value="Chittagong">Chittagong</option>
+                        <option value="Rajshahi">Rajshahi</option>
+                        <option value="Khulna">Khulna</option>
+                        <option value="Barisal">Barisal</option>
+                        <option value="Sylhet">Sylhet</option>
+                        <option value="Rangpur">Rangpur</option>
+                        <option value="Mymensingh">Mymensingh</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary">Register</button>
+            </form>
+        </div>
+
+        <!-- Dashboard -->
+        <div id="dashboardSection" style="display: none;">
+            <div class="dashboard-header">
+                <h2>Available Exams</h2>
+                <div class="nav-buttons">
+                    <a href="profile.html" class="btn btn-outline">Profile</a>
+                    <a href="admin.html" class="btn btn-secondary">Admin</a>
+                </div>
+            </div>
+            
+            <div id="examsList" class="grid">
+                <!-- Exams will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <div id="loading" class="loading" style="display: none;">
+        <div class="spinner"></div>
+    </div>
+
+    <script src="app.js"></script>
+    <script>
+        let currentUser = null;
+
+        // Initialize app
+        document.addEventListener('DOMContentLoaded', function() {
+            const userData = getUserData();
+            if (userData) {
+                currentUser = userData;
+                showDashboard();
+                loadExams();
+            } else {
+                showRegistration();
+            }
+        });
+
+        // Registration form handler
+        document.getElementById('registrationForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const name = document.getElementById('name').value;
+            const district = document.getElementById('district').value;
+            
+            showLoading();
+            
+            try {
+                const response = await apiCall('/register', 'POST', { name, district });
+                
+                const userData = {
+                    userId: response.userId,
+                    name: name,
+                    district: district
+                };
+                
+                saveUserData(userData);
+                currentUser = userData;
+                
+                hideLoading();
+                showDashboard();
+                loadExams();
+                
+                showAlert('Registration successful!', 'success');
+            } catch (error) {
+                hideLoading();
+                showAlert(error.message || 'Registration failed', 'error');
+            }
+        });
+
+        function showRegistration() {
+            document.getElementById('registrationSection').style.display = 'block';
+            document.getElementById('dashboardSection').style.display = 'none';
+            document.getElementById('userInfo').style.display = 'none';
+        }
+
+        function showDashboard() {
+            document.getElementById('registrationSection').style.display = 'none';
+            document.getElementById('dashboardSection').style.display = 'block';
+            document.getElementById('userInfo').style.display = 'flex';
+            document.getElementById('userName').textContent = currentUser.name;
+        }
+
+        async function loadExams() {
+            try {
+                showLoading();
+                const exams = await apiCall('/exams', 'GET');
+                displayExams(exams);
+                hideLoading();
+            } catch (error) {
+                hideLoading();
+                showAlert('Failed to load exams', 'error');
+            }
+        }
+
+        function displayExams(exams) {
+            const examsList = document.getElementById('examsList');
+            
+            if (exams.length === 0) {
+                examsList.innerHTML = '<p class="no-data">No exams available at the moment.</p>';
+                return;
+            }
+
+            examsList.innerHTML = exams.map(exam => {
+                const startTime = new Date(exam.start_time);
+                const endTime = new Date(exam.end_time);
+                const now = new Date();
+                
+                let statusClass = 'upcoming';
+                let statusText = 'Upcoming';
+                let actionButton = '';
+                
+                if (now >= startTime && now <= endTime) {
+                    statusClass = 'active';
+                    statusText = 'Active';
+                    actionButton = `<a href="take.html?examId=${exam.id}" class="btn btn-primary">Take Exam</a>`;
+                } else if (now > endTime) {
+                    statusClass = 'ended';
+                    statusText = 'Ended';
+                    actionButton = `<a href="review.html?examId=${exam.id}" class="btn btn-outline">View Results</a>`;
+                } else {
+                    actionButton = `<button class="btn btn-disabled" disabled>Not Started</button>`;
+                }
+                
+                return `
+                    <div class="exam-card">
+                        <div class="exam-header">
+                            <h3>${exam.title}</h3>
+                            <span class="status status-${statusClass}">${statusText}</span>
+                        </div>
+                        <p class="exam-description">${exam.description || 'No description available'}</p>
+                        <div class="exam-meta">
+                            <div class="meta-item">
+                                <strong>Start:</strong> ${formatDateTime(startTime)}
+                            </div>
+                            <div class="meta-item">
+                                <strong>End:</strong> ${formatDateTime(endTime)}
+                            </div>
+                            <div class="meta-item">
+                                <strong>Marks:</strong> ${exam.marks_per_question} per question
+                            </div>
+                        </div>
+                        <div class="exam-actions">
+                            ${actionButton}
+                            <a href="leaderboard.html?examId=${exam.id}" class="btn btn-outline">Leaderboard</a>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function logout() {
+            localStorage.removeItem('userData');
+            currentUser = null;
+            showRegistration();
+        }
+    </script>
+</body>
+</html>

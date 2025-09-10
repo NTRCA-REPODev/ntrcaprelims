@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exam Review - Online Exam Portal</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1 class="logo">📚 Exam Portal</h1>
+            <a href="index.html" class="btn btn-outline">Back to Home</a>
+        </header>
+
+        <div id="reviewContent" style="display: none;">
+            <div class="review-header card">
+                <h2>Exam Review</h2>
+                <div class="score-summary">
+                    <div class="score-item">
+                        <span class="score-value" id="totalScore">0</span>
+                        <span class="score-label">Your Score</span>
+                    </div>
+                    <div class="score-breakdown" id="scoreBreakdown">
+                        <!-- Score breakdown will be added here -->
+                    </div>
+                </div>
+            </div>
+
+            <div id="questionReview" class="questions-review">
+                <!-- Review questions will be loaded here -->
+            </div>
+
+            <div class="review-actions card">
+                <a href="leaderboard.html" id="leaderboardLink" class="btn btn-primary">View Leaderboard</a>
+                <a href="index.html" class="btn btn-outline">Back to Home</a>
+            </div>
+        </div>
+    </div>
+
+    <div id="loading" class="loading" style="display: none;">
+        <div class="spinner"></div>
+    </div>
+
+    <script src="app.js"></script>
+    <script>
+        let examId = null;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check if user is logged in
+            const userData = getUserData();
+            if (!userData) {
+                window.location.href = 'index.html';
+                return;
+            }
+
+            // Get exam ID from URL
+            const urlParams = new URLSearchParams(window.location.search);
+            examId = urlParams.get('examId');
+            
+            if (!examId) {
+                showAlert('Invalid exam ID', 'error');
+                setTimeout(() => window.location.href = 'index.html', 2000);
+                return;
+            }
+
+            loadReview();
+        });
+
+        async function loadReview() {
+            try {
+                showLoading();
+                const reviewData = await apiCall(`/exams/${examId}/review`, 'GET');
+                hideLoading();
+                displayReview(reviewData);
+            } catch (error) {
+                hideLoading();
+                showAlert(error.message || 'Failed to load review', 'error');
+                setTimeout(() => window.location.href = 'index.html', 2000);
+            }
+        }
+
+        function displayReview(reviewData) {
+            // Display score
+            document.getElementById('totalScore').textContent = reviewData.score;
+            
+            // Calculate statistics
+            const totalQuestions = reviewData.questions.length;
+            const correctAnswers = reviewData.questions.filter(q => q.isCorrect).length;
+            const wrongAnswers = reviewData.questions.filter(q => 
+                q.userAnswer !== null && q.userAnswer !== undefined && q.userAnswer !== '' && !q.isCorrect
+            ).length;
+            const unanswered = totalQuestions - correctAnswers - wrongAnswers;
+
+            document.getElementById('scoreBreakdown').innerHTML = `
+                <div class="breakdown-item correct">
+                    <span class="count">${correctAnswers}</span>
+                    <span class="label">Correct</span>
+                </div>
+                <div class="breakdown-item wrong">
+                    <span class="count">${wrongAnswers}</span>
+                    <span class="label">Wrong</span>
+                </div>
+                <div class="breakdown-item unanswered">
+                    <span class="count">${unanswered}</span>
+                    <span class="label">Unanswered</span>
+                </div>
+            `;
+
+            // Display questions review
+            const questionReview = document.getElementById('questionReview');
+            questionReview.innerHTML = reviewData.questions.map((question, index) => {
+                const userAnswerText = question.userAnswer !== null && question.userAnswer !== undefined && question.userAnswer !== '' 
+                    ? question.options[question.userAnswer] 
+                    : 'Not answered';
+                
+                const correctAnswerText = question.options[question.correctAnswer];
+                
+                let statusClass = 'unanswered';
+                let statusIcon = '⭕';
+                
+                if (question.userAnswer !== null && question.userAnswer !== undefined && question.userAnswer !== '') {
+                    if (question.isCorrect) {
+                        statusClass = 'correct';
+                        statusIcon = '✅';
+                    } else {
+                        statusClass = 'wrong';
+                        statusIcon = '❌';
+                    }
+                }
+
+                return `
+                    <div class="review-question card question-${statusClass}">
+                        <div class="question-header">
+                            <h3>Question ${index + 1} ${statusIcon}</h3>
+                        </div>
+                        <div class="question-text">
+                            ${question.question}
+                        </div>
+                        <div class="question-options">
+                            ${question.options.map((option, optionIndex) => {
+                                let optionClass = '';
+                                if (optionIndex === question.correctAnswer) {
+                                    optionClass = 'correct-option';
+                                } else if (optionIndex === question.userAnswer && !question.isCorrect) {
+                                    optionClass = 'wrong-option';
+                                }
+                                
+                                return `
+                                    <div class="option ${optionClass}">
+                                        ${option}
+                                        ${optionIndex === question.correctAnswer ? ' ✓' : ''}
+                                        ${optionIndex === question.userAnswer && !question.isCorrect ? ' ✗' : ''}
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                        <div class="answer-summary">
+                            <div class="answer-item">
+                                <strong>Your Answer:</strong> 
+                                <span class="${question.isCorrect ? 'correct' : 'wrong'}">${userAnswerText}</span>
+                            </div>
+                            <div class="answer-item">
+                                <strong>Correct Answer:</strong> 
+                                <span class="correct">${correctAnswerText}</span>
+                            </div>
+                        </div>
+                        ${question.explanation ? `
+                            <div class="explanation">
+                                <strong>Explanation:</strong>
+                                <p>${question.explanation}</p>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            }).join('');
+
+            document.getElementById('leaderboardLink').href = `leaderboard.html?examId=${examId}`;
+            document.getElementById('reviewContent').style.display = 'block';
+        }
+    </script>
+</body>
+</html>

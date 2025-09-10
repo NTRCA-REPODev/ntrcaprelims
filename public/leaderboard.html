@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leaderboard - Online Exam Portal</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1 class="logo">📚 Exam Portal</h1>
+            <a href="index.html" class="btn btn-outline">Back to Home</a>
+        </header>
+
+        <div id="leaderboardContent" style="display: none;">
+            <div class="leaderboard-header card">
+                <h2>🏆 Leaderboard</h2>
+                <div class="leaderboard-info">
+                    <span id="totalParticipants"></span>
+                </div>
+            </div>
+
+            <div class="leaderboard-table card">
+                <div class="table-header">
+                    <div class="rank">Rank</div>
+                    <div class="name">Name</div>
+                    <div class="district">District</div>
+                    <div class="score">Score</div>
+                </div>
+                <div id="leaderboardList" class="table-body">
+                    <!-- Leaderboard entries will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="loading" class="loading" style="display: none;">
+        <div class="spinner"></div>
+    </div>
+
+    <script src="app.js"></script>
+    <script>
+        let examId = null;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Get exam ID from URL
+            const urlParams = new URLSearchParams(window.location.search);
+            examId = urlParams.get('examId');
+            
+            if (!examId) {
+                showAlert('Invalid exam ID', 'error');
+                setTimeout(() => window.location.href = 'index.html', 2000);
+                return;
+            }
+
+            loadLeaderboard();
+        });
+
+        async function loadLeaderboard() {
+            try {
+                showLoading();
+                const leaderboardData = await apiCall(`/exams/${examId}/leaderboard`, 'GET');
+                hideLoading();
+                displayLeaderboard(leaderboardData);
+            } catch (error) {
+                hideLoading();
+                showAlert(error.message || 'Failed to load leaderboard', 'error');
+            }
+        }
+
+        function displayLeaderboard(data) {
+            document.getElementById('totalParticipants').textContent = `${data.length} participants`;
+            
+            const leaderboardList = document.getElementById('leaderboardList');
+            
+            if (data.length === 0) {
+                leaderboardList.innerHTML = '<div class="no-data">No participants yet.</div>';
+            } else {
+                const currentUser = getUserData();
+                
+                leaderboardList.innerHTML = data.map(entry => {
+                    const isCurrentUser = currentUser && entry.name === currentUser.name;
+                    const rankClass = entry.rank <= 3 ? `rank-${entry.rank}` : '';
+                    const userClass = isCurrentUser ? 'current-user' : '';
+                    
+                    let rankIcon = '';
+                    if (entry.rank === 1) rankIcon = '🥇';
+                    else if (entry.rank === 2) rankIcon = '🥈';
+                    else if (entry.rank === 3) rankIcon = '🥉';
+                    
+                    return `
+                        <div class="table-row ${rankClass} ${userClass}">
+                            <div class="rank">
+                                ${rankIcon} ${entry.rank}
+                            </div>
+                            <div class="name">
+                                ${entry.name} ${isCurrentUser ? '(You)' : ''}
+                            </div>
+                            <div class="district">${entry.district}</div>
+                            <div class="score">${entry.score}</div>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            document.getElementById('leaderboardContent').style.display = 'block';
+        }
+    </script>
+</body>
+</html>

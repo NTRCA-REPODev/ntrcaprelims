@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Take Exam - Online Exam Portal</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1 class="logo">📚 Exam Portal</h1>
+            <div class="exam-timer" id="examTimer">
+                <span id="timeRemaining"></span>
+            </div>
+        </header>
+
+        <div id="examContent" style="display: none;">
+            <div class="exam-info card">
+                <h2 id="examTitle"></h2>
+                <div class="exam-meta">
+                    <span>Total Questions: <strong id="totalQuestions"></strong></span>
+                    <span>Time Remaining: <strong id="timeLeft"></strong></span>
+                </div>
+            </div>
+
+            <form id="examForm" class="exam-form">
+                <div id="questionsList">
+                    <!-- Questions will be loaded here -->
+                </div>
+                
+                <div class="submit-section card">
+                    <p class="submit-warning">
+                        ⚠️ Make sure you have answered all questions. You cannot change your answers after submission.
+                    </p>
+                    <button type="submit" class="btn btn-primary btn-large">Submit Exam</button>
+                </div>
+            </form>
+        </div>
+
+        <div id="resultSection" style="display: none;" class="card">
+            <div class="result-content">
+                <h2>Exam Submitted Successfully!</h2>
+                <div class="score-display">
+                    <div class="score-value" id="finalScore">0</div>
+                    <div class="score-label">Your Score</div>
+                </div>
+                <div class="result-actions">
+                    <a href="review.html" id="reviewLink" class="btn btn-primary">View Review</a>
+                    <a href="leaderboard.html" id="leaderboardLink" class="btn btn-outline">See Leaderboard</a>
+                    <a href="index.html" class="btn btn-secondary">Back to Home</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="loading" class="loading" style="display: none;">
+        <div class="spinner"></div>
+    </div>
+
+    <script src="app.js"></script>
+    <script>
+        let examId = null;
+        let examData = null;
+        let questions = [];
+        let timeRemaining = 0;
+        let timerInterval = null;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check if user is logged in
+            const userData = getUserData();
+            if (!userData) {
+                window.location.href = 'index.html';
+                return;
+            }
+
+            // Get exam ID from URL
+            const urlParams = new URLSearchParams(window.location.search);
+            examId = urlParams.get('examId');
+            
+            if (!examId) {
+                showAlert('Invalid exam ID', 'error');
+                setTimeout(() => window.location.href = 'index.html', 2000);
+                return;
+            }
+
+            loadExamData();
+        });
+
+        async function loadExamData() {
+            try {
+                showLoading();
+                
+                // Load exam metadata
+                examData = await apiCall(`/exams/${examId}`, 'GET');
+                
+                // Check if exam is active
+                if (examData.status !== 'active') {
+                    hideLoading();
+                    showAlert('This exam is not currently active', 'error');
+                    setTimeout(() => window.location.href = 'index.html', 2000);
+                    return;
+                }
+
+                // Load questions
+                questions = await apiCall(`/exams/${examId}/questions`, 'GET');
+                
+                hideLoading();
+                setupExam();
+                startTimer();
+                
+            } catch (error) {
+                hideLoading();
+                showAlert(error.message || 'Failed to load exam', 'error');
+                setTimeout(() => window.location.href = 'index.html', 2000);
+            }
+        }
+
+        function setupExam() {
+            document.getElementById('examTitle').textContent = examData.title;
+            document.getElementById('totalQuestions').textContent = questions.length;
+            
+            displayQuestions();
+            document.getElementById('examContent').style.display = 'block';
+        }
+
+        function displayQuestions() {
+            const questionsList = document.getElementById('questionsList');
+            
+            questionsList.innerHTML = questions.map((question, index) => `
+                <div class="question-card card">
+                    <div class="question-header">
+                        <h3>Question ${index + 1}</h3>
+                    </div>
+                    <div class="question-text">
+                        ${question.question}
+                    </div>
+                    <div class="options">
+                        ${question.options.map((option, optionIndex) => `
+                            <label class="option-label">
+                                <input type="radio" name="question_${question.id}" value="${optionIndex}">
+                                <span class="option-text">${option}</span>
+                            </label>
+                        `).join('')}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function startTimer() {
+            const endTime = new Date(examData.end_time);
+            const now = new Date();
+            timeRemaining = Math.max(0, Math.floor((endTime - now) / 1000));
+            
+            updateTimerDisplay();
+            
+            timerInterval = setInterval(() => {
+                timeRemaining--;
+                updateTimerDisplay();
+                
+                if (timeRemaining <= 0) {
+                    clearInterval(timerInterval);
+                    autoSubmitExam();
+                }
+            }, 1000);
+        }
+
+        function updateTimerDisplay() {
+            const hours = Math.floor(timeRemaining / 3600);
+            const minutes = Math.floor((timeRemaining % 3600) / 60);
+            const seconds = timeRemaining % 60;
+            
+            const timeString = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+            document.getElementById('timeRemaining').textContent = timeString;
+            document.getElementById('timeLeft').textContent = timeString;
+            
+            // Change color when time is running low
+            const timerElement = document.getElementById('examTimer');
+            if (timeRemaining <= 300) { // 5 minutes
+                timerElement.style.color = '#ef4444';
+            } else if (timeRemaining <= 900) { // 15 minutes
+                timerElement.style.color = '#f59e0b';
+            }
+        }
+
+        // Form submission handler
+        document.getElementById('examForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            submitExam();
+        });
+
+        async function submitExam() {
+            try {
+                showLoading();
+                
+                // Collect answers
+                const answers = questions.map(question => {
+                    const selectedOption = document.querySelector(`input[name="question_${question.id}"]:checked`);
+                    return selectedOption ? parseInt(selectedOption.value) : null;
+                });
+
+                // Submit answers
+                const result = await apiCall(`/exams/${examId}/submit`, 'POST', { answers });
+                
+                // Stop timer
+                if (timerInterval) {
+                    clearInterval(timerInterval);
+                }
+                
+                hideLoading();
+                showResult(result.score);
+                
+            } catch (error) {
+                hideLoading();
+                showAlert(error.message || 'Failed to submit exam', 'error');
+            }
+        }
+
+        function autoSubmitExam() {
+            showAlert('Time is up! Submitting your exam automatically.', 'warning');
+            setTimeout(submitExam, 2000);
+        }
+
+        function showResult(score) {
+            document.getElementById('examContent').style.display = 'none';
+            document.getElementById('finalScore').textContent = score;
+            document.getElementById('reviewLink').href = `review.html?examId=${examId}`;
+            document.getElementById('leaderboardLink').href = `leaderboard.html?examId=${examId}`;
+            document.getElementById('resultSection').style.display = 'block';
+        }
+
+        // Prevent page refresh/navigation during exam
+        window.addEventListener('beforeunload', function(e) {
+            if (document.getElementById('examContent').style.display !== 'none') {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        });
+    </script>
+</body>
+</html>
