@@ -4,7 +4,6 @@ const API_BASE_URL =
     ? 'http://localhost:3000'
     : 'https://ntrcaprelims.onrender.com';
 
-
 // Utility functions
 function showLoading() {
     document.getElementById('loading').style.display = 'flex';
@@ -15,7 +14,6 @@ function hideLoading() {
 }
 
 function showAlert(message, type = 'info') {
-    // Create alert element if it doesn't exist
     let alertContainer = document.getElementById('alertContainer');
     if (!alertContainer) {
         alertContainer = document.createElement('div');
@@ -40,7 +38,6 @@ function showAlert(message, type = 'info') {
 
     alertContainer.appendChild(alert);
 
-    // Auto remove after 5 seconds
     setTimeout(() => {
         if (alert.parentElement) {
             alert.remove();
@@ -58,13 +55,11 @@ async function apiCall(endpoint, method = 'GET', data = null, authToken = null) 
         },
     };
 
-    // Add user ID header if user is logged in
     const userData = getUserData();
     if (userData && userData.userId) {
         options.headers['X-User-Id'] = userData.userId;
     }
 
-    // Add auth token if provided
     if (authToken) {
         options.headers['Authorization'] = authToken;
     }
@@ -128,6 +123,33 @@ function formatTime(date) {
     }).format(date);
 }
 
+// Countdown utility
+function startCountdown(startTime, elementId) {
+    const start = new Date(startTime);
+
+    function updateCountdown() {
+        const now = new Date();
+        const diffMs = start - now;
+
+        if (diffMs <= 0) {
+            document.getElementById(elementId).textContent = "Exam started!";
+            clearInterval(timer);
+            return;
+        }
+
+        const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((diffMs % (1000 * 60)) / 1000);
+
+        document.getElementById(elementId).textContent =
+            `${days}d ${hours}h ${minutes}m ${seconds}s left`;
+    }
+
+    updateCountdown();
+    const timer = setInterval(updateCountdown, 1000);
+}
+
 // Form validation utilities
 function validateEmail(email) {
     const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -138,7 +160,7 @@ function validateRequired(value) {
     return value && value.toString().trim().length > 0;
 }
 
-// Debounce utility for search/input handlers
+// Debounce utility
 function debounce(func, wait) {
     let timeout;
     return function executedFunction(...args) {
@@ -151,7 +173,7 @@ function debounce(func, wait) {
     };
 }
 
-// Local storage helpers with error handling
+// Local storage helpers
 function setLocalStorage(key, value) {
     try {
         localStorage.setItem(key, JSON.stringify(value));
@@ -172,7 +194,6 @@ function getLocalStorage(key, defaultValue = null) {
     }
 }
 
-
 // Network status monitoring
 function checkNetworkStatus() {
     if (!navigator.onLine) {
@@ -182,7 +203,6 @@ function checkNetworkStatus() {
     return true;
 }
 
-// Add network status listeners
 window.addEventListener('online', () => {
     showAlert('Connection restored!', 'success');
 });
@@ -197,7 +217,7 @@ window.addEventListener('error', (event) => {
     showAlert('An unexpected error occurred. Please refresh the page.', 'error');
 });
 
-// Prevent form submission on Enter key for specific inputs
+// Prevent form submission on Enter key for search inputs
 document.addEventListener('keydown', (event) => {
     if (event.key === 'Enter' && event.target.type === 'search') {
         event.preventDefault();
