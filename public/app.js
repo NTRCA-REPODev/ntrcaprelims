@@ -172,6 +172,34 @@ function getLocalStorage(key, defaultValue = null) {
     }
 }
 
+// Countdown utility
+function startCountdown(startTime, elementId) {
+    const start = new Date(startTime);
+
+    function updateCountdown() {
+        const now = new Date();
+        const diffMs = start - now;
+
+        if (diffMs <= 0) {
+            document.getElementById(elementId).textContent = "Exam started!";
+            clearInterval(timer);
+            return;
+        }
+
+        const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((diffMs % (1000 * 60)) / 1000);
+
+        document.getElementById(elementId).textContent =
+            `${days}d ${hours}h ${minutes}m ${seconds}s left`;
+    }
+
+    updateCountdown(); // initial call
+    const timer = setInterval(updateCountdown, 1000); // update every second
+}
+
+
 // Network status monitoring
 function checkNetworkStatus() {
     if (!navigator.onLine) {
