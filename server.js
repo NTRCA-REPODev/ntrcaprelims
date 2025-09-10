@@ -256,7 +256,9 @@ app.get('/exams/:id/review', requireUser, async (req, res) => {
     
     // Get user's attempt
     const attemptResult = await pool.query(`
-      SELECT answers, score FROM attempts WHERE user_id = $1 AND exam_id = $2
+      SELECT answers, score 
+      FROM attempts 
+      WHERE user_id = $1 AND exam_id = $2
     `, [req.user.id, id]);
 
     if (attemptResult.rows.length === 0) {
@@ -264,12 +266,14 @@ app.get('/exams/:id/review', requireUser, async (req, res) => {
     }
 
     const attempt = attemptResult.rows[0];
-    const userAnswers = JSON.parse(attempt.answers);
+    const userAnswers = attempt.answers; // ✅ no JSON.parse()
 
     // Get questions with correct answers and explanations
     const questionsResult = await pool.query(`
       SELECT id, question, options, correct_answer, explanation 
-      FROM questions WHERE exam_id = $1 ORDER BY id
+      FROM questions 
+      WHERE exam_id = $1 
+      ORDER BY id
     `, [id]);
 
     const review = questionsResult.rows.map(q => ({
@@ -291,6 +295,7 @@ app.get('/exams/:id/review', requireUser, async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch review' });
   }
 });
+
 
 // GET /exams/:id/leaderboard
 app.get('/exams/:id/leaderboard', async (req, res) => {
