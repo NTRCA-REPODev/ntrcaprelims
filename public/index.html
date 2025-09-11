@@ -5,6 +5,65 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Online Exam Portal</title>
     <link rel="stylesheet" href="styles.css">
+    <style>
+        .premium-card {
+            background: linear-gradient(135deg, #ffffff, #f9f9f9);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .premium-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 25px rgba(0,0,0,0.12);
+        }
+        .exam-subject {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: #1e3a8a;
+        }
+        .exam-topic {
+            font-size: 1.2rem;
+            font-weight: 500;
+            margin: 5px 0 15px;
+            color: #374151;
+        }
+        .exam-meta {
+            font-size: 0.95rem;
+            color: #6b7280;
+            margin-bottom: 15px;
+            display: flex;
+            gap: 15px;
+        }
+        .countdown-timer {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #dc2626;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        .status-upcoming {
+            background: #facc15;
+            color: #78350f;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+        }
+        .status-active {
+            background: #22c55e;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+        }
+        .status-ended {
+            background: #9ca3af;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+        }
+    </style>
 </head>
 <body>
     <div class="container">
@@ -16,7 +75,6 @@
             </div>
         </header>
 
-        <!-- Registration Form -->
         <div id="registrationSection" class="card">
             <h2>Register for Exams</h2>
             <form id="registrationForm" class="form">
@@ -42,7 +100,6 @@
             </form>
         </div>
 
-        <!-- Dashboard -->
         <div id="dashboardSection" style="display: none;">
             <div class="dashboard-header">
                 <h2>Available Exams</h2>
@@ -51,10 +108,7 @@
                     <a href="admin.html" class="btn btn-secondary">Admin</a>
                 </div>
             </div>
-            
-            <div id="examsList" class="grid">
-                <!-- Exams will be loaded here -->
-            </div>
+            <div id="examsList" class="grid"></div>
         </div>
     </div>
 
@@ -66,32 +120,26 @@
     <script>
         let currentUser = null;
 
-        // Countdown helper
         function startCountdown(startTime, elementId) {
             function updateCountdown() {
                 const now = new Date();
                 const diffMs = startTime - now;
-
                 if (diffMs <= 0) {
                     document.getElementById(elementId).textContent = "Starting...";
                     clearInterval(timer);
                     return;
                 }
-
                 const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
                 const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
                 const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
                 const seconds = Math.floor((diffMs % (1000 * 60)) / 1000);
-
                 document.getElementById(elementId).textContent =
                     `${days}d ${hours}h ${minutes}m ${seconds}s`;
             }
-
             updateCountdown();
             const timer = setInterval(updateCountdown, 1000);
         }
 
-        // Initialize app
         document.addEventListener('DOMContentLoaded', function() {
             const userData = getUserData();
             if (userData) {
@@ -103,31 +151,19 @@
             }
         });
 
-        // Registration form handler
         document.getElementById('registrationForm').addEventListener('submit', async function(e) {
             e.preventDefault();
-            
             const name = document.getElementById('name').value;
             const district = document.getElementById('district').value;
-            
             showLoading();
-            
             try {
                 const response = await apiCall('/register', 'POST', { name, district });
-                
-                const userData = {
-                    userId: response.userId,
-                    name: name,
-                    district: district
-                };
-                
+                const userData = { userId: response.userId, name, district };
                 saveUserData(userData);
                 currentUser = userData;
-                
                 hideLoading();
                 showDashboard();
                 loadExams();
-                
                 showAlert('Registration successful!', 'success');
             } catch (error) {
                 hideLoading();
@@ -159,10 +195,8 @@
                 showAlert('Failed to load exams', 'error');
             }
         }
-
         function displayExams(exams) {
             const examsList = document.getElementById('examsList');
-            
             if (exams.length === 0) {
                 examsList.innerHTML = '<p class="no-data">No exams available at the moment.</p>';
                 return;
@@ -170,46 +204,36 @@
 
             examsList.innerHTML = exams.map(exam => {
                 const startTime = new Date(exam.start_time);
-                const endTime = new Date(exam.end_time);
                 const now = new Date();
-                
+
                 let statusClass = 'upcoming';
                 let statusText = 'Upcoming';
                 let actionButton = '';
-                
-                if (now >= startTime && now <= endTime) {
+
+                if (now >= startTime && now <= new Date(exam.end_time)) {
                     statusClass = 'active';
                     statusText = 'Active';
                     actionButton = `<a href="take.html?examId=${exam.id}" class="btn btn-primary">Take Exam</a>`;
-                } else if (now > endTime) {
+                } else if (now > new Date(exam.end_time)) {
                     statusClass = 'ended';
                     statusText = 'Ended';
                     actionButton = `<a href="review.html?examId=${exam.id}" class="btn btn-outline">View Results</a>`;
                 } else {
                     actionButton = `<button class="btn btn-disabled" disabled>Not Started</button>`;
                 }
-                
+
                 return `
-                    <div class="exam-card">
+                    <div class="exam-card premium-card">
                         <div class="exam-header">
-                            <h3>${exam.title}</h3>
+                            <h3 class="exam-subject">${exam.subject || 'Subject Name'}</h3>
                             <span class="status status-${statusClass}">${statusText}</span>
                         </div>
-                        <p class="exam-description">${exam.description || 'No description available'}</p>
+                        <h4 class="exam-topic">${exam.title}</h4>
                         <div class="exam-meta">
-                            <div class="meta-item">
-                                <strong>Start:</strong> 
-                                ${now < startTime 
-                                    ? `<span id="countdown-${exam.id}"></span>` 
-                                    : formatDateTime(startTime)}
-                            </div>
-                            <div class="meta-item">
-                                <strong>End:</strong> ${formatDateTime(endTime)}
-                            </div>
-                            <div class="meta-item">
-                                <strong>Marks:</strong> ${exam.marks_per_question} per question
-                            </div>
+                            <span class="difficulty">Difficulty: ${exam.difficulty || 'N/A'}</span>
+                            <span class="duration">Duration: ${exam.duration || 0} mins</span>
                         </div>
+                        <div class="countdown-timer" id="countdown-${exam.id}"></div>
                         <div class="exam-actions">
                             ${actionButton}
                             <a href="leaderboard.html?examId=${exam.id}" class="btn btn-outline">Leaderboard</a>
