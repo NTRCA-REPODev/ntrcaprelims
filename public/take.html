@@ -125,27 +125,38 @@
         }
 
         function displayQuestions() {
-            const questionsList = document.getElementById('questionsList');
-            
-            questionsList.innerHTML = questions.map((question, index) => `
-                <div class="question-card card">
-                    <div class="question-header">
-                        <h3>Question ${index + 1}</h3>
-                    </div>
-                    <div class="question-text">
-                        ${question.question}
-                    </div>
-                    <div class="options">
-                        ${question.options.map((option, optionIndex) => `
-                            <label class="option-label">
-                                <input type="radio" name="question_${question.id}" value="${optionIndex}">
-                                <span class="option-text">${option}</span>
-                            </label>
-                        `).join('')}
-                    </div>
-                </div>
-            `).join('');
-        }
+    const questionsList = document.getElementById('questionsList');
+    
+    questionsList.innerHTML = questions.map((question, index) => `
+        <div class="question-card card">
+            <div class="question-header">
+                <h3>Question ${index + 1}</h3>
+            </div>
+            <div class="question-text">
+                ${question.question}
+            </div>
+            <div class="options">
+                ${question.options.map((option, optionIndex) => `
+                    <label class="option-label">
+                        <input type="radio" name="question_${question.id}" value="${optionIndex}">
+                        <span class="option-text">${option}</span>
+                    </label>
+                `).join('')}
+            </div>
+        </div>
+    `).join('');
+
+    // 🔒 Lock answer after first click
+    document.querySelectorAll('.options input[type="radio"]').forEach(input => {
+        input.addEventListener('click', function() {
+            const name = this.name;
+            document.querySelectorAll(`input[name="${name}"]`).forEach(opt => {
+                opt.disabled = true;
+            });
+        });
+    });
+}
+
 
         function startTimer() {
             const endTime = new Date(examData.end_time);
