@@ -42,6 +42,18 @@
             margin-bottom: 15px;
             text-align: center;
         }
+
+       .countdown-timer {
+            font-size: 1.6rem;
+            font-weight: 600;
+            color: #dc2626;
+            margin-bottom: 15px;
+            text-align: center;
+        }    
+        .countdown-timer span {
+            font-weight: 700;
+        }
+      
         .status-upcoming {
             background: #facc15;
             color: #78350f;
@@ -195,7 +207,7 @@
                 showAlert('Failed to load exams', 'error');
             }
         }
-        function displayExams(exams) {
+                function displayExams(exams) {
             const examsList = document.getElementById('examsList');
             if (exams.length === 0) {
                 examsList.innerHTML = '<p class="no-data">No exams available at the moment.</p>';
@@ -229,11 +241,9 @@
                             <span class="status status-${statusClass}">${statusText}</span>
                         </div>
                         <h4 class="exam-topic">${exam.title}</h4>
-                        <div class="exam-meta">
-                            <span class="difficulty">Difficulty: ${exam.difficulty || 'N/A'}</span>
-                            <span class="duration">Duration: ${exam.duration || 0} mins</span>
+                        <div class="countdown-timer">
+                            Starts in – <span id="countdown-${exam.id}"></span>
                         </div>
-                        <div class="countdown-timer" id="countdown-${exam.id}"></div>
                         <div class="exam-actions">
                             ${actionButton}
                             <a href="leaderboard.html?examId=${exam.id}" class="btn btn-outline">Leaderboard</a>
@@ -251,12 +261,3 @@
                 }
             });
         }
-
-        function logout() {
-            localStorage.removeItem('userData');
-            currentUser = null;
-            showRegistration();
-        }
-    </script>
-</body>
-</html>
