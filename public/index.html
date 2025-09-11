@@ -28,15 +28,19 @@
             margin: 5px 0 15px;
             color: #374151;
         }
+        .exam-meta {
+            font-size: 0.95rem;
+            color: #6b7280;
+            margin-bottom: 15px;
+            display: flex;
+            gap: 15px;
+        }
         .countdown-timer {
-            font-size: 1.8rem;
-            font-weight: 600;
+            font-size: 2rem;
+            font-weight: bold;
             color: #dc2626;
             margin-bottom: 15px;
             text-align: center;
-        }
-        .countdown-timer span {
-            font-weight: 700;
         }
         .status-upcoming {
             background: #facc15;
@@ -71,7 +75,6 @@
             </div>
         </header>
 
-        <!-- Registration Form -->
         <div id="registrationSection" class="card">
             <h2>Register for Exams</h2>
             <form id="registrationForm" class="form">
@@ -97,7 +100,6 @@
             </form>
         </div>
 
-        <!-- Dashboard -->
         <div id="dashboardSection" style="display: none;">
             <div class="dashboard-header">
                 <h2>Available Exams</h2>
@@ -193,57 +195,68 @@
                 showAlert('Failed to load exams', 'error');
             }
         }
-      function displayExams(exams) {
-    const examsList = document.getElementById('examsList');
-    if (exams.length === 0) {
-        examsList.innerHTML = '<p class="no-data">No exams available at the moment.</p>';
-        return;
-    }
+        function displayExams(exams) {
+            const examsList = document.getElementById('examsList');
+            if (exams.length === 0) {
+                examsList.innerHTML = '<p class="no-data">No exams available at the moment.</p>';
+                return;
+            }
 
-    examsList.innerHTML = exams.map(exam => {
-        const startTime = new Date(exam.start_time);
-        const now = new Date();
+            examsList.innerHTML = exams.map(exam => {
+                const startTime = new Date(exam.start_time);
+                const now = new Date();
 
-        let statusClass = 'upcoming';
-        let statusText = 'Upcoming';
-        let actionButton = '';
+                let statusClass = 'upcoming';
+                let statusText = 'Upcoming';
+                let actionButton = '';
 
-        if (now >= startTime && now <= new Date(exam.end_time)) {
-            statusClass = 'active';
-            statusText = 'Active';
-            actionButton = `<a href="take.html?examId=${exam.id}" class="btn btn-primary">Take Exam</a>`;
-        } else if (now > new Date(exam.end_time)) {
-            statusClass = 'ended';
-            statusText = 'Ended';
-            actionButton = `<a href="review.html?examId=${exam.id}" class="btn btn-outline">View Results</a>`;
-        } else {
-            actionButton = `<button class="btn btn-disabled" disabled>Not Started</button>`;
+                if (now >= startTime && now <= new Date(exam.end_time)) {
+                    statusClass = 'active';
+                    statusText = 'Active';
+                    actionButton = `<a href="take.html?examId=${exam.id}" class="btn btn-primary">Take Exam</a>`;
+                } else if (now > new Date(exam.end_time)) {
+                    statusClass = 'ended';
+                    statusText = 'Ended';
+                    actionButton = `<a href="review.html?examId=${exam.id}" class="btn btn-outline">View Results</a>`;
+                } else {
+                    actionButton = `<button class="btn btn-disabled" disabled>Not Started</button>`;
+                }
+
+                return `
+                    <div class="exam-card premium-card">
+                        <div class="exam-header">
+                            <h3 class="exam-subject">${exam.subject || 'Subject Name'}</h3>
+                            <span class="status status-${statusClass}">${statusText}</span>
+                        </div>
+                        <h4 class="exam-topic">${exam.title}</h4>
+                        <div class="exam-meta">
+                            <span class="difficulty">Difficulty: ${exam.difficulty || 'N/A'}</span>
+                            <span class="duration">Duration: ${exam.duration || 0} mins</span>
+                        </div>
+                        <div class="countdown-timer" id="countdown-${exam.id}"></div>
+                        <div class="exam-actions">
+                            ${actionButton}
+                            <a href="leaderboard.html?examId=${exam.id}" class="btn btn-outline">Leaderboard</a>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // Start countdowns for upcoming exams
+            exams.forEach(exam => {
+                const startTime = new Date(exam.start_time);
+                const now = new Date();
+                if (now < startTime) {
+                    startCountdown(startTime, `countdown-${exam.id}`);
+                }
+            });
         }
 
-        return `
-            <div class="exam-card premium-card">
-                <div class="exam-header">
-                    <h3 class="exam-subject">${exam.subject || 'Subject Name'}</h3>
-                    <span class="status status-${statusClass}">${statusText}</span>
-                </div>
-                <h4 class="exam-topic">${exam.title}</h4>
-                <div class="countdown-timer">
-                    Starts in – <span id="countdown-${exam.id}"></span>
-                </div>
-                <div class="exam-actions">
-                    ${actionButton}
-                    <a href="leaderboard.html?examId=${exam.id}" class="btn btn-outline">Leaderboard</a>
-                </div>
-            </div>
-        `;
-    }).join('');
-
-    // Start countdowns for upcoming exams
-    exams.forEach(exam => {
-        const startTime = new Date(exam.start_time);
-        const now = new Date();
-        if (now < startTime) {
-            startCountdown(startTime, `countdown-${exam.id}`);
+        function logout() {
+            localStorage.removeItem('userData');
+            currentUser = null;
+            showRegistration();
         }
-    });
-}
+    </script>
+</body>
+</html>
