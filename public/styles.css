@@ -399,6 +399,39 @@ textarea {
     flex-wrap: wrap;
 }
 
+/* Base option style */
+.option-label {
+    display: block;
+    padding: 10px 14px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+/* Hover effect for clarity */
+.option-label:hover {
+    background-color: #f0f4ff;
+}
+
+/* When the radio is checked, style the WHOLE label */
+.option-label input[type="radio"]:checked + .option-text {
+    background-color: rgba(59, 130, 246, 0.15); /* semi-blue */
+    display: block;
+    width: 100%;
+    padding: 10px 14px;
+    border-radius: 6px;
+    color: #1e3a8a;
+    font-weight: 500;
+}
+
+/* Optional: remove default radio outline */
+.option-label input[type="radio"] {
+    margin-right: 8px;
+}
+
+
 /* Review styles */
 .review-header {
     text-align: center;
