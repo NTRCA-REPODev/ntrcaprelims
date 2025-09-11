@@ -66,6 +66,31 @@
     <script>
         let currentUser = null;
 
+        // Countdown helper
+        function startCountdown(startTime, elementId) {
+            function updateCountdown() {
+                const now = new Date();
+                const diffMs = startTime - now;
+
+                if (diffMs <= 0) {
+                    document.getElementById(elementId).textContent = "Starting...";
+                    clearInterval(timer);
+                    return;
+                }
+
+                const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((diffMs % (1000 * 60)) / 1000);
+
+                document.getElementById(elementId).textContent =
+                    `${days}d ${hours}h ${minutes}m ${seconds}s`;
+            }
+
+            updateCountdown();
+            const timer = setInterval(updateCountdown, 1000);
+        }
+
         // Initialize app
         document.addEventListener('DOMContentLoaded', function() {
             const userData = getUserData();
@@ -173,7 +198,10 @@
                         <p class="exam-description">${exam.description || 'No description available'}</p>
                         <div class="exam-meta">
                             <div class="meta-item">
-                                <strong>Start:</strong> ${formatDateTime(startTime)}
+                                <strong>Start:</strong> 
+                                ${now < startTime 
+                                    ? `<span id="countdown-${exam.id}"></span>` 
+                                    : formatDateTime(startTime)}
                             </div>
                             <div class="meta-item">
                                 <strong>End:</strong> ${formatDateTime(endTime)}
@@ -189,6 +217,15 @@
                     </div>
                 `;
             }).join('');
+
+            // Start countdowns for upcoming exams
+            exams.forEach(exam => {
+                const startTime = new Date(exam.start_time);
+                const now = new Date();
+                if (now < startTime) {
+                    startCountdown(startTime, `countdown-${exam.id}`);
+                }
+            });
         }
 
         function logout() {
