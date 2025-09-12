@@ -439,6 +439,21 @@ textarea {
     color: white;
 }
 
+.option-label {
+    display: flex;              /* keep items side-by-side */
+    align-items: center;        /* vertically center radio + text */
+    gap: 8px;                   /* space between radio and text */
+    white-space: nowrap;        /* prevent wrapping to next line */
+}
+
+.option-text {
+    flex: 1;                    /* allow text to take remaining space */
+    white-space: normal;        /* allow wrapping inside the text if it's too long */
+}
+
+
+
+
 .score-summary {
     display: flex;
     flex-direction: column;
